@@ -108,8 +108,17 @@ async def lifespan(app: FastAPI):
         )
         scheduler.start()
         logger.info("Scheduler started — weekly scrape on %s at %02d:00", settings.scrape_day_of_week, settings.scrape_hour)
+
+        # Auto-scrape on startup if DB is empty (handles Render restarts wiping SQLite)
+        with Session(get_engine()) as session:
+            has_data = session.exec(
+                select(PriceRecord).where(PriceRecord.is_current == True).limit(1)
+            ).first()
+        if not has_data:
+            logger.info("DB empty on startup — running initial scrape")
+            asyncio.create_task(_run_all_scrapers())
     else:
-        logger.info("Scheduler disabled (SCRAPE_ENABLED=false) — use run_scraper_local.py to push prices")
+        logger.info("Scheduler disabled — use run_scraper_local.py to push prices")
     yield
     scheduler.shutdown(wait=False)
 

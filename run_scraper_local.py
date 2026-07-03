@@ -14,7 +14,7 @@ import httpx
 from scrapers import ALL_SCRAPERS
 
 DEPLOYED_API_URL = "https://streamingprices.onrender.com"
-API_KEY = "tu-api-key-secreta"  # <-- la misma que pusiste en Render en la variable API_KEY
+API_KEY = "34136992a688cf45567b0a9d208dd9b1" 
 
 
 async def scrape_and_push():
