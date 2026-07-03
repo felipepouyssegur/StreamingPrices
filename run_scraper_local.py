@@ -13,8 +13,8 @@ import asyncio
 import httpx
 from scrapers import ALL_SCRAPERS
 
-DEPLOYED_API_URL = "https://streaming-prices-ar.onrender.com"  # <-- cambiá por tu URL de Render
-API_KEY = "tu-api-key-secreta"                                  # <-- la misma que pusiste en Render
+DEPLOYED_API_URL = "https://streamingprices.onrender.com"
+API_KEY = "tu-api-key-secreta"  # <-- la misma que pusiste en Render en la variable API_KEY
 
 
 async def scrape_and_push():
