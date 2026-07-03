@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     scrape_day_of_week: str = "mon"
     scrape_hour: int = 3
     headless: bool = True
+    scrape_enabled: bool = True
 
     class Config:
         env_file = ".env"

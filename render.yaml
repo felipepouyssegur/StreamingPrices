@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: streaming-prices-ar
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    plan: free
+    envVars:
+      - key: API_KEY
+        sync: false
+      - key: HEADLESS
+        value: "true"
+      - key: SCRAPE_ENABLED
+        value: "false"
+      - key: SCRAPE_DAY_OF_WEEK
+        value: "mon"
+      - key: SCRAPE_HOUR
+        value: "3"

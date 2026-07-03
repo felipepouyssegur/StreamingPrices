@@ -99,14 +99,17 @@ def require_api_key(x_api_key: Optional[str] = Header(default=None)):
 async def lifespan(app: FastAPI):
     init_db()
     settings = get_settings()
-    scheduler.add_job(
-        _run_all_scrapers,
-        CronTrigger(day_of_week=settings.scrape_day_of_week, hour=settings.scrape_hour, minute=0),
-        id="weekly_scrape",
-        replace_existing=True,
-    )
-    scheduler.start()
-    logger.info("Scheduler started — weekly scrape on %s at %02d:00", settings.scrape_day_of_week, settings.scrape_hour)
+    if settings.scrape_enabled:
+        scheduler.add_job(
+            _run_all_scrapers,
+            CronTrigger(day_of_week=settings.scrape_day_of_week, hour=settings.scrape_hour, minute=0),
+            id="weekly_scrape",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info("Scheduler started — weekly scrape on %s at %02d:00", settings.scrape_day_of_week, settings.scrape_hour)
+    else:
+        logger.info("Scheduler disabled (SCRAPE_ENABLED=false) — use run_scraper_local.py to push prices")
     yield
     scheduler.shutdown(wait=False)
 
