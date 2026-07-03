@@ -1,0 +1,10 @@
+*.db
+*.db-shm
+*.db-wal
+.env
+__pycache__/
+*.pyc
+*.pyo
+.playwright/
+claude.md
+CLAUDE.md
