@@ -69,16 +69,35 @@ class ImpuestitoScraper(BaseScraper):
         return plans
 
     def _extract_plans(self, soup: BeautifulSoup) -> List[ScrapedPlan]:
+        """
+        HTML structure on impuestito.org:
+          <span title="Netflix Básico" class="...">Netflix Básico</span>   ← plan name
+          <span class="text-gray-500 ml-7">$ 11.069 <small>/m</small></span>  ← price
+        """
         plans: List[ScrapedPlan] = []
         seen_names: set = set()
 
-        for h3 in soup.find_all("h3"):
-            name = h3.get_text(strip=True)
+        for name_span in soup.select("span[title]"):
+            name = name_span.get("title", "").strip()
             if not name or name in seen_names:
                 continue
 
-            price, billing = self._find_price_near(h3)
-            if price and price > 100:
+            # Walk up to find the row container, then look for the price span inside it
+            container = name_span.parent  # div.flex.items-center
+            if container:
+                container = container.parent  # outer row div
+
+            price, billing = None, "monthly"
+            if container:
+                for price_span in container.find_all("span"):
+                    classes = " ".join(price_span.get("class", []))
+                    if "text-gray-500" in classes and "ml-7" in classes:
+                        raw = price_span.get_text().replace("\xa0", " ").strip()
+                        price, billing = self._match_price(raw)
+                        if price:
+                            break
+
+            if name and price and price > 100:
                 seen_names.add(name)
                 plans.append(ScrapedPlan(
                     plan_name=name,
@@ -86,35 +105,11 @@ class ImpuestitoScraper(BaseScraper):
                     billing_period=billing,
                 ))
 
-        # Fallback: scan full page text for price patterns if h3 approach failed
+        # Fallback: scan page text for price patterns (keeps working if HTML changes)
         if not plans:
             plans = self._fallback_scan(soup)
 
         return plans
-
-    def _find_price_near(self, h3: Tag):
-        """Look for a price in siblings and parent's children near a given h3."""
-        # Strategy 1: next siblings of h3
-        node = h3.find_next_sibling()
-        for _ in range(5):
-            if node is None:
-                break
-            text = node.get_text(strip=True)
-            result = self._match_price(text)
-            if result[0]:
-                return result
-            node = node.find_next_sibling()
-
-        # Strategy 2: any p/span inside h3's parent
-        parent = h3.parent
-        if parent:
-            for tag in parent.find_all(["p", "span"]):
-                text = tag.get_text(strip=True)
-                result = self._match_price(text)
-                if result[0]:
-                    return result
-
-        return None, "monthly"
 
     def _match_price(self, text: str):
         m = MONTHLY_RE.search(text)
@@ -126,7 +121,6 @@ class ImpuestitoScraper(BaseScraper):
         return None, "monthly"
 
     def _fallback_scan(self, soup: BeautifulSoup) -> List[ScrapedPlan]:
-        """Last resort: extract all unique monthly prices from the page body."""
         text = soup.get_text()
         seen_prices: set = set()
         plans = []
