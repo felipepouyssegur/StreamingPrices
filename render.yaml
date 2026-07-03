@@ -11,7 +11,7 @@ services:
       - key: HEADLESS
         value: "true"
       - key: SCRAPE_ENABLED
-        value: "false"
+        value: "true"
       - key: SCRAPE_DAY_OF_WEEK
         value: "mon"
       - key: SCRAPE_HOUR
