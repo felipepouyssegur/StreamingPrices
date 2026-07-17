@@ -22,7 +22,7 @@ async def scrape_and_push():
         for scraper in ALL_SCRAPERS:
             print(f"\n[{scraper.service_name}] Scrapeando...")
             try:
-                plans = await scraper.scrape(headless=True)
+                plans = await scraper.scrape()
                 if not plans:
                     print(f"  Sin resultados — revisá los selectores en scrapers/{scraper.service_id}.py")
                     continue

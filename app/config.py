@@ -6,11 +6,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./streaming_prices.db"
     api_key: str = "change-me-in-production"
     scrape_interval_hours: int = 24
-    headless: bool = True
     scrape_enabled: bool = True
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 @lru_cache

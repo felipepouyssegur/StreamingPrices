@@ -39,9 +39,8 @@ async def _run_scraper(service_id: str) -> ScrapeResult:
     if not scraper:
         return ScrapeResult(service_id=service_id, status="error", plans_saved=0, error="Unknown service")
 
-    settings = get_settings()
     try:
-        plans = await scraper.scrape(headless=settings.headless)
+        plans = await scraper.scrape()
         if not plans:
             raise ValueError("No plans found — selectors may need updating")
         save_scrape_results(service_id, plans)
@@ -122,7 +121,8 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Scheduler disabled — use run_scraper_local.py to push prices")
     yield
-    scheduler.shutdown(wait=False)
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
 
 
 # ── app ────────────────────────────────────────────────────────────────────

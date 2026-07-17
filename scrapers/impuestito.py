@@ -1,10 +1,15 @@
 """
-Scraper for hgu
+Scraper for impuestito.org
 Uses httpx + BeautifulSoup (no browser needed).
 Source already aggregates Argentine streaming prices with taxes included.
+
+Prices are read from the JSON-LD (schema.org Product/offers) block that the
+site embeds server-side. That is far more stable than scraping the hydrated
+React markup, whose CSS classes change frequently.
 """
 
 import re
+import json
 import logging
 from typing import List, Optional
 
@@ -191,46 +196,89 @@ class ImpuestitoScraper(BaseScraper):
 
     def _extract_plans(self, soup: BeautifulSoup) -> List[ScrapedPlan]:
         """
-        HTML structure on impuestito.org:
-          <span title="Netflix Básico" class="...">Netflix Básico</span>   ← plan name
-          <span class="text-gray-500 ml-7">$ 11.069 <small>/m</small></span>  ← price
+        Primary source: JSON-LD schema.org Product with an `offers` array, e.g.
+          {"@type":"Offer","name":"Netflix Básico","price":8999,
+           "priceCurrency":"ARS","description":"Facturación cada 1 mes(es)"}
         """
-        plans: List[ScrapedPlan] = []
-        seen_names: set = set()
+        plans = self._extract_from_jsonld(soup)
 
-        for name_span in soup.select("span[title]"):
-            name = name_span.get("title", "").strip()
-            if not name or name in seen_names:
-                continue
-
-            # Walk up to find the row container, then look for the price span inside it
-            container = name_span.parent  # div.flex.items-center
-            if container:
-                container = container.parent  # outer row div
-
-            price, billing = None, "monthly"
-            if container:
-                for price_span in container.find_all("span"):
-                    classes = " ".join(price_span.get("class", []))
-                    if "text-gray-500" in classes and "ml-7" in classes:
-                        raw = price_span.get_text().replace("\xa0", " ").strip()
-                        price, billing = self._match_price(raw)
-                        if price:
-                            break
-
-            if name and price and price > 100:
-                seen_names.add(name)
-                plans.append(ScrapedPlan(
-                    plan_name=name,
-                    price=price,
-                    billing_period=billing,
-                ))
-
-        # Fallback: scan page text for price patterns (keeps working if HTML changes)
+        # Fallback: scan visible text for price patterns if JSON-LD is missing
         if not plans:
+            logger.info("[%s] JSON-LD empty — trying text fallback", self.service_id)
             plans = self._fallback_scan(soup)
 
         return plans
+
+    def _extract_from_jsonld(self, soup: BeautifulSoup) -> List[ScrapedPlan]:
+        plans: List[ScrapedPlan] = []
+        seen: set = set()
+
+        for script in soup.find_all("script", type="application/ld+json"):
+            raw = script.string or script.get_text()
+            if not raw:
+                continue
+            try:
+                data = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+            # JSON-LD may be a single object or a list of objects
+            for node in data if isinstance(data, list) else [data]:
+                if not isinstance(node, dict):
+                    continue
+                offers = node.get("offers")
+                if not offers:
+                    continue
+                if isinstance(offers, dict):
+                    offers = [offers]
+
+                for offer in offers:
+                    if not isinstance(offer, dict):
+                        continue
+                    name = (offer.get("name") or "").strip()
+                    price = self._coerce_price(offer.get("price"))
+                    if not name or price is None or price <= 0:
+                        continue
+
+                    billing = self._billing_from_description(offer.get("description", ""))
+                    currency = (offer.get("priceCurrency") or "ARS").strip() or "ARS"
+
+                    key = (name, price, billing)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+
+                    plans.append(ScrapedPlan(
+                        plan_name=name,
+                        price=price,
+                        currency=currency,
+                        billing_period=billing,
+                    ))
+
+        return plans
+
+    @staticmethod
+    def _coerce_price(value) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(str(value).replace(",", "."))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _billing_from_description(desc: str) -> str:
+        """'Facturación cada 12 mes(es)' → 'annual'."""
+        m = re.search(r"cada\s+(\d+)\s*mes", desc, re.IGNORECASE)
+        months = int(m.group(1)) if m else 1
+        return {
+            1: "monthly",
+            3: "quarterly",
+            6: "biannual",
+            12: "annual",
+        }.get(months, f"every_{months}_months")
 
     def _match_price(self, text: str):
         m = MONTHLY_RE.search(text)
