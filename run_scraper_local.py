@@ -1,20 +1,36 @@
 """
-Corré este script desde tu PC (en Argentina) una vez por semana.
-Scrapea los precios y los sube a la API desplegada en Render.
+Corré este script una vez por semana para scrapear los precios y subirlos
+a la API desplegada en Render.
 
 Uso:
     python run_scraper_local.py
 
-Configuración:
-    Editá DEPLOYED_API_URL y API_KEY antes de correrlo.
+Configuración (variables de entorno, o en el archivo .env):
+    DEPLOYED_API_URL   URL de la API (default: https://streamingprices.onrender.com)
+    API_KEY            clave de admin para el header X-API-Key (requerida)
 """
 
+import os
+import sys
 import asyncio
 import httpx
+from dotenv import load_dotenv
+
 from scrapers import ALL_SCRAPERS
 
-DEPLOYED_API_URL = "https://streamingprices.onrender.com"
-API_KEY = "34136992a688cf45567b0a9d208dd9b1" 
+load_dotenv()
+
+DEPLOYED_API_URL = os.environ.get("DEPLOYED_API_URL", "https://streamingprices.onrender.com")
+API_KEY = os.environ.get("API_KEY")
+
+if not API_KEY:
+    sys.exit(
+        "ERROR: falta la variable de entorno API_KEY.\n"
+        "Definila antes de correr el script, por ejemplo:\n"
+        "  PowerShell:  $env:API_KEY = 'tu-clave'\n"
+        "  Bash:        export API_KEY='tu-clave'\n"
+        "o agregala al archivo .env como API_KEY=tu-clave"
+    )
 
 
 async def scrape_and_push():
