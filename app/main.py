@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -11,7 +12,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import get_settings
-from app.database import get_session, init_db, mark_scrape_error, save_scrape_results
+from app.database import get_engine, get_session, init_db, mark_scrape_error, save_scrape_results
 from app.models import (
     ManualPriceIn,
     PlanOut,
