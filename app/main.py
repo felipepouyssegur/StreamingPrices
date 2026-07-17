@@ -251,3 +251,13 @@ def manual_price_override(
 @app.get("/health", tags=["meta"])
 def health():
     return {"status": "ok", "timestamp": datetime.utcnow()}
+
+
+@app.get("/api/v1/scrape/trigger", tags=["admin"])
+async def scrape_trigger(api_key: str, background_tasks: BackgroundTasks):
+    """Endpoint GET para cron jobs externos. Usar ?api_key=<key>"""
+    settings = get_settings()
+    if api_key != settings.api_key:
+        raise HTTPException(status_code=401, detail="Invalid api_key")
+    background_tasks.add_task(_run_all_scrapers)
+    return {"status": "queued", "services": len(ALL_SCRAPERS)}
