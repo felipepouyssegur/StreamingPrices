@@ -253,7 +253,7 @@ def health():
     return {"status": "ok", "timestamp": datetime.utcnow()}
 
 
-@app.get("/api/v1/scrape/trigger", tags=["admin"])
+@app.get("/cron/scrape", tags=["admin"])
 async def scrape_trigger(api_key: str, background_tasks: BackgroundTasks):
     """Endpoint GET para cron jobs externos. Usar ?api_key=<key>"""
     settings = get_settings()
