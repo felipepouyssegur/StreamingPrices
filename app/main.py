@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import get_settings
 from app.database import get_session, init_db, mark_scrape_error, save_scrape_results
@@ -75,6 +75,7 @@ def _build_service_out(meta: ServiceMeta, records: List[PriceRecord]) -> Service
     return ServiceOut(
         id=meta.id,
         name=meta.name,
+        category=meta.category,
         website_url=meta.website_url,
         logo_url=meta.logo_url,
         last_scraped_at=meta.last_scraped_at,
@@ -102,12 +103,12 @@ async def lifespan(app: FastAPI):
     if settings.scrape_enabled:
         scheduler.add_job(
             _run_all_scrapers,
-            CronTrigger(day_of_week=settings.scrape_day_of_week, hour=settings.scrape_hour, minute=0),
-            id="weekly_scrape",
+            IntervalTrigger(hours=settings.scrape_interval_hours),
+            id="interval_scrape",
             replace_existing=True,
         )
         scheduler.start()
-        logger.info("Scheduler started — weekly scrape on %s at %02d:00", settings.scrape_day_of_week, settings.scrape_hour)
+        logger.info("Scheduler started — scrape every %d hours", settings.scrape_interval_hours)
 
         # Auto-scrape on startup if DB is empty (handles Render restarts wiping SQLite)
         with Session(get_engine()) as session:

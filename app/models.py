@@ -23,6 +23,7 @@ class PriceRecord(SQLModel, table=True):
 class ServiceMeta(SQLModel, table=True):
     id: str = Field(primary_key=True)
     name: str
+    category: str = ""
     website_url: str
     pricing_url: str
     logo_url: str = ""
@@ -47,6 +48,7 @@ class PlanOut(BaseModel):
 class ServiceOut(BaseModel):
     id: str
     name: str
+    category: str
     website_url: str
     logo_url: str
     last_scraped_at: Optional[datetime]

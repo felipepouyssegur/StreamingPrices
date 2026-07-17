@@ -5,8 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./streaming_prices.db"
     api_key: str = "change-me-in-production"
-    scrape_day_of_week: str = "mon"
-    scrape_hour: int = 3
+    scrape_interval_hours: int = 24
     headless: bool = True
     scrape_enabled: bool = True
 
